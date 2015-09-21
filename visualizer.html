@@ -37,15 +37,18 @@
  	}
 	</style>
 	<script>
-	(function() {
 		"use strict";
 		
 		const CIRCLE_RES = 128;
 		
 		var canvas, ctx;
 		var audioElement, analyserNode;
-		var radius = 100;
+		var radius = 200;
 		var cx, cy;
+		var rot = 0;
+		var spinsPerSec = 0.05;
+		var offset = 0;
+		var compOffsetsPerSec = 0.5;
 		
 		function init() {
 			canvas = document.querySelector("#canvas");
@@ -84,7 +87,7 @@
 			*/ 
 			
 			// fft stands for Fast Fourier Transform
-			analyserNode.fftSize = CIRCLE_RES / 2;
+			analyserNode.fftSize = CIRCLE_RES;
 			
 			// this is where we hook up the <audio> element to the analyserNode
 			sourceNode = audioCtx.createMediaElementSource(audioElement); 
@@ -131,30 +134,52 @@
 			var data = new Uint8Array(CIRCLE_RES/2); 
 			analyserNode.getByteFrequencyData(data);
 			
+			//ctx.clearRect(0,0,canvas.width,canvas.height);
+			ctx.save();
+			ctx.fillStyle = 'rgba(255,255,255,0.3)';
+			ctx.fillRect(0,0,canvas.width,canvas.height);
+			ctx.restore();
+			ctx.save();
+			ctx.translate(cx,cy);
+			ctx.rotate(rot * Math.PI / 180);
 			drawCircle(data);
+			ctx.restore();
+			rot += 360 / 60 * spinsPerSec;
+			rot %= 360;
+			//atm offset just accomplishes the same thing as rot, but without rotation
+			offset += CIRCLE_RES / 60 * compOffsetsPerSec;
+			offset %= CIRCLE_RES;
 		}
 		
 		function drawCircle(data) {
 			var avg = 0;
 			ctx.beginPath();
-			ctx.moveTo(cx + radius + data[0],cy);
+			var inc = 2 * Math.PI / CIRCLE_RES;
+			ctx.moveTo((radius + data[0]) * Math.cos(offset * inc),(radius + data[0]) * Math.sin(offset * inc));
 			for(var i = 1;i < CIRCLE_RES;i+=2) {
-				ctx.lineTo(cx + radius * cos(i * 2 * Math.PI / CIRCLE_RES)
-				,cy + radius * sin(i * 2 * Math.PI / CIRCLE_RES));
-				ctx.lineTo(cx + (radius + data[(i + 1) % CIRCLE_RES / 2]) * cos(i * 2 * Math.PI / CIRCLE_RES)
-				,cy + (radius + data[(i + 1) % CIRCLE_RES / 2]) * sin(i * 2 * Math.PI / CIRCLE_RES));
+				ctx.lineTo(radius * Math.cos((i + offset) * inc), radius * Math.sin((i + offset) * inc));
+				ctx.lineTo((radius + data[(i + 1) % CIRCLE_RES / 2]) * Math.cos((i + 1 + offset) % CIRCLE_RES * inc)
+				,(radius + data[(i + 1) % CIRCLE_RES / 2]) * Math.sin((i + 1 + offset) % CIRCLE_RES * inc));
+				
 				avg += data[(i + 1) % CIRCLE_RES / 2];
+				
+				//ctx.textAlign = 'center';
+				//ctx.verticalAlign = 'middle';
+				//ctx.strokeText((i + 1) % CIRCLE_RES / 2 + ""
+				//,radius * Math.cos((i + 1) % CIRCLE_RES * 2 * Math.PI / CIRCLE_RES)
+				//,radius * Math.sin((i + 1) % CIRCLE_RES * 2 * Math.PI / CIRCLE_RES));
 			}
 			ctx.closePath();
 			ctx.stroke();
 			
 			avg /= CIRCLE_RES / 2;
 			ctx.beginPath();
-			ctx.arc(cx,cy,avg,0,2 * Math.PI,false);
+			ctx.arc(0,0,avg,0,2 * Math.PI,false);
+			ctx.closePath();
+			ctx.stroke();
 		}
 		
 		window.addEventListener("load",init);
-	}());
 	</script>
 </head>
 <body>
