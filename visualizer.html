@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8" />
+	<title>Gentle Leather Boyz</title>
+	<style>
+	body{
+		background: #dddddd;
+		font-family:verdana,tahoma,sans-serif;
+		font-size:.8em;
+ 	}
+
+	#canvas,#controls{
+		background: #ffffff;
+		cursor: pointer;
+		margin-left: 10px;
+		margin-top: 10px;
+		box-shadow: 3px 3px 6px rgba(0,0,0,0.5);
+		
+		margin-left: 10px;
+		margin-top: 10px;
+		
+ 	}
+ 	
+ 	#controls{
+ 		padding:5px;
+ 		width:490px;
+ 	}
+ 	
+ 	#controls div{
+ 		margin-bottom:5px;
+ 	}
+ 	
+ 	#assignment{
+ 		margin-left: 10px;
+		margin-top: 10px;
+ 	}
+	</style>
+	<script>
+	(function() {
+		"use strict";
+		
+		const CIRCLE_RES = 128;
+		
+		var canvas, ctx;
+		var audioElement, analyserNode;
+		var radius = 100;
+		var cx, cy;
+		
+		function init() {
+			canvas = document.querySelector("#canvas");
+			ctx = canvas.getContext('2d');
+			
+			cx = canvas.width / 2;
+			cy = canvas.height / 2;
+			
+			audioElement = document.querySelector('audio');
+			analyserNode = createWebAudioContextWithAnalyserNode(audioElement);
+			
+			setupUI();
+			
+			playStream(audioElement,'media/New Adventure Theme.mp3');
+			
+			update();
+		}
+		
+		function createWebAudioContextWithAnalyserNode(audioElement) {
+			var audioCtx, analyserNode, sourceNode;
+			// create new AudioContext
+			// The || is because WebAudio has not been standardized across browsers yet
+			// http://webaudio.github.io/web-audio-api/#the-audiocontext-interface
+			audioCtx = new (window.AudioContext || window.webkitAudioContext);
+			
+			// create an analyser node
+			analyserNode = audioCtx.createAnalyser();
+			
+			/*
+			We will request NUM_SAMPLES number of samples or "bins" spaced equally 
+			across the sound spectrum.
+			
+			If NUM_SAMPLES (fftSize) is 256, then the first bin is 0 Hz, the second is 172 Hz, 
+			the third is 344Hz. Each bin contains a number between 0-255 representing 
+			the amplitude of that frequency.
+			*/ 
+			
+			// fft stands for Fast Fourier Transform
+			analyserNode.fftSize = CIRCLE_RES / 2;
+			
+			// this is where we hook up the <audio> element to the analyserNode
+			sourceNode = audioCtx.createMediaElementSource(audioElement); 
+			sourceNode.connect(analyserNode);
+			
+			// here we connect to the destination i.e. speakers
+			analyserNode.connect(audioCtx.destination);
+			return analyserNode;
+		}
+		
+		function setupUI(){
+			document.querySelector("#trackSelect").onchange = function(e){
+				playStream(audioElement,e.target.value);
+			};
+			
+			document.querySelector("#fsButton").onclick = function(){
+				requestFullscreen(canvas);
+			};
+		}
+		
+		function requestFullscreen(element) {
+			if (element.requestFullscreen) {
+			  element.requestFullscreen();
+			} else if (element.mozRequestFullscreen) {
+			  element.mozRequestFullscreen();
+			} else if (element.mozRequestFullScreen) { // camel-cased 'S' was changed to 's' in spec
+			  element.mozRequestFullScreen();
+			} else if (element.webkitRequestFullscreen) {
+			  element.webkitRequestFullscreen();
+			}
+			// .. and do nothing if the method is not supported
+		}
+		
+		function playStream(audioElement,path){
+			audioElement.src = path;
+			audioElement.play();
+			audioElement.volume = 0.2;
+			document.querySelector('#status').innerHTML = "Now playing: " + path;
+		}
+		
+		function update() {
+			requestAnimationFrame(update);
+			
+			var data = new Uint8Array(NUM_SAMPLES/2); 
+			analyserNode.getByteFrequencyData(data);
+			
+			drawCircle(data);
+		}
+		
+		function drawCircle(data) {
+			var avg = 0;
+			ctx.beginPath();
+			ctx.moveTo(cx + radius + data[0],cy);
+			for(var i = 1;i < CIRCLE_RES;i+=2) {
+				ctx.lineTo(cx + radius * cos(i * 2 * Math.PI / CIRCLE_RES)
+				,cy + radius * sin(i * 2 * Math.PI / CIRCLE_RES));
+				ctx.lineTo(cx + (radius + data[(i + 1) % CIRCLE_RES / 2]) * cos(i * 2 * Math.PI / CIRCLE_RES)
+				,cy + (radius + data[(i + 1) % CIRCLE_RES / 2]) * sin(i * 2 * Math.PI / CIRCLE_RES));
+				avg += data[(i + 1) % CIRCLE_RES / 2];
+			}
+			ctx.closePath();
+			ctx.stroke();
+			
+			avg /= CIRCLE_RES / 2;
+			ctx.beginPath();
+			ctx.arc(cx,cy,avg,0,2 * Math.PI,false);
+		}
+		
+		window.addEventListener("load",init);
+	}());
+	</script>
+</head>
+<body>
+	<canvas id="canvas" width="800" height="600">
+	Loser. Download a real browser, like Netscape Navigator. Though you still won't have canvas support.
+	</canvas>
+	<div id="controls">
+		<audio controls loop></audio>
+		<label>Track: 
+			<select id="trackSelect" >
+				<option value="media/New Adventure Theme.mp3">New Adventure Theme</option>
+				<option value="media/Peanuts Theme.mp3">Peanuts Theme</option>
+				<option value="media/The Picard Song.mp3">The Picard Song</option>
+			</select>
+		</label>
+		<button id="fsButton">Go Full Screen</button><br>
+		<p id="status">???</p>
+	</div>
+</body>
+</html>
