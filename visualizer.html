@@ -128,7 +128,7 @@
 		function update() {
 			requestAnimationFrame(update);
 			
-			var data = new Uint8Array(NUM_SAMPLES/2); 
+			var data = new Uint8Array(CIRCLE_RES/2); 
 			analyserNode.getByteFrequencyData(data);
 			
 			drawCircle(data);
