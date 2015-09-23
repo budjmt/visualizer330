@@ -39,16 +39,19 @@
 	<script>
 		"use strict";
 		
-		const CIRCLE_RES = 128;
+		const CIRCLE_RES = 1024;
 		
 		var canvas, ctx;
 		var audioElement, analyserNode;
-		var radius = 200;
+		var radius = 150;
 		var cx, cy;
 		var rot = 0;
-		var spinsPerSec = 0.05;
+		var spinsPerSec = 0.003;
 		var offset = 0;
-		var compOffsetsPerSec = 0.5;
+		var compOffsetsPerSec = 0.0125;
+		var imageData;
+		var avg
+		
 		
 		function init() {
 			canvas = document.querySelector("#canvas");
@@ -63,6 +66,8 @@
 			setupUI();
 			
 			playStream(audioElement,'media/New Adventure Theme.mp3');
+			
+			imageData = ctx.getImageData(0,0,canvas.width,canvas.height);
 			
 			update();
 		}
@@ -135,48 +140,109 @@
 			analyserNode.getByteFrequencyData(data);
 			
 			//ctx.clearRect(0,0,canvas.width,canvas.height);
+			/*
+			
+			*/
+			
+			
+			
+			
+			//adds the concentric effect
 			ctx.save();
-			ctx.fillStyle = 'rgba(255,255,255,0.3)';
+			ctx.globalAlpha = 1;
+			ctx.translate(canvas.width/2,canvas.height/2);
+			ctx.globalCompositeOperation = "multiply";
+			ctx.drawImage(canvas, -canvas.width/2.2,-canvas.height/2.2,canvas.width/1.1,canvas.height/1.1);
+			ctx.restore();
+			
+			ctx.save();
+			ctx.fillStyle = 'rgba(255,255,255,0.5)';
 			ctx.fillRect(0,0,canvas.width,canvas.height);
 			ctx.restore();
+			
 			ctx.save();
 			ctx.translate(cx,cy);
 			ctx.rotate(rot * Math.PI / 180);
 			drawCircle(data);
 			ctx.restore();
-			rot += 360 / 60 * spinsPerSec;
+			//rotate based on average loudness
+			rot += 360 / 60 * spinsPerSec * avg;
 			rot %= 360;
 			//atm offset just accomplishes the same thing as rot, but without rotation
 			offset += CIRCLE_RES / 60 * compOffsetsPerSec;
 			offset %= CIRCLE_RES;
+			
+			ctx.getImageData(0,0,canvas.width,canvas.height);
 		}
 		
 		function drawCircle(data) {
-			var avg = 0;
+			avg = 0;
+			var nrm = {max:0,min:0,actual:0};
 			ctx.beginPath();
 			var inc = 2 * Math.PI / CIRCLE_RES;
 			ctx.moveTo((radius + data[0]) * Math.cos(offset * inc),(radius + data[0]) * Math.sin(offset * inc));
+			
+			nrm.max = data[(1 + 1) % CIRCLE_RES / 2];
+			nrm.min = data[(1 + 1) % CIRCLE_RES / 2];
+			
 			for(var i = 1;i < CIRCLE_RES;i+=2) {
-				ctx.lineTo(radius * Math.cos((i + offset) * inc), radius * Math.sin((i + offset) * inc));
-				ctx.lineTo((radius + data[(i + 1) % CIRCLE_RES / 2]) * Math.cos((i + 1 + offset) % CIRCLE_RES * inc)
-				,(radius + data[(i + 1) % CIRCLE_RES / 2]) * Math.sin((i + 1 + offset) % CIRCLE_RES * inc));
+				if(data[(i + 1) % CIRCLE_RES / 2] > nrm.max)
+					nrm.max = data[(i + 1) % CIRCLE_RES / 2];
+				else if (data[(i + 1) % CIRCLE_RES / 2] < nrm.min) {
+					nrm.min = data[(i + 1) % CIRCLE_RES / 2];
+				}
+				avg += data[(i + 1) % CIRCLE_RES / 2];
+			}
+			avg /= CIRCLE_RES / 2;
+			nrm.actual = (nrm.max-nrm.min)/(CIRCLE_RES / 2);
+			
+			//bar pass
+			for(var i = 1;i < CIRCLE_RES;i+=2) {
+				ctx.lineTo((radius+(avg*1.5)) * Math.cos((i + offset) * inc), ((avg*1.5)+radius) * Math.sin((i + offset) * inc));
+				ctx.lineTo((radius+(avg*1.5) + (nrm.actual * data[(i + 1) % CIRCLE_RES / 2])) * Math.cos((i + 1 + offset) % CIRCLE_RES * inc)
+				,(radius+(avg*1.5) + (nrm.actual * data[(i + 1) % CIRCLE_RES / 2])) * Math.sin((i + 1 + offset) % CIRCLE_RES * inc));
+
+			}
+			ctx.closePath();
+			ctx.stroke();
+			ctx.moveTo((radius + data[0]) * Math.cos(offset * inc),(radius + data[0]) * Math.sin(offset * inc));
+			//strokePass
+			for(var i = 1;i < CIRCLE_RES;i+=2) {
+				
+				
+				//ctx.lineTo(radius * Math.cos((i + offset) * inc), radius * Math.sin((i + offset) * inc));
+				ctx.lineTo((radius+(avg*1.5) + data[(i + 1) % CIRCLE_RES / 2]) * Math.cos((i + 1 + offset) % CIRCLE_RES * inc)
+				,(radius+(avg*1.5) + data[(i + 1) % CIRCLE_RES / 2]) * Math.sin((i + 1 + offset) % CIRCLE_RES * inc));
+				
+				/*
+				ctx.quadraticCurveTo(radius * Math.cos((i + offset) * inc), radius * Math.sin((i + offset) * inc),
+									 (radius + data[(i + 1) % CIRCLE_RES / 2]) * Math.cos((i + 1 + offset) % CIRCLE_RES * inc),
+									 (radius + data[(i + 1) % CIRCLE_RES / 2]) * Math.sin((i + 1 + offset) % CIRCLE_RES * inc));
 				
 				avg += data[(i + 1) % CIRCLE_RES / 2];
-				
+				*/
 				//ctx.textAlign = 'center';
 				//ctx.verticalAlign = 'middle';
 				//ctx.strokeText((i + 1) % CIRCLE_RES / 2 + ""
 				//,radius * Math.cos((i + 1) % CIRCLE_RES * 2 * Math.PI / CIRCLE_RES)
 				//,radius * Math.sin((i + 1) % CIRCLE_RES * 2 * Math.PI / CIRCLE_RES));
 			}
+			//weird skew elipse thing
+			for(var i = 1;i < CIRCLE_RES;i+=2) {
+				ctx.lineTo((radius+(avg*1.5)) * Math.cos((i + offset) * inc), radius * Math.sin((i + offset) * inc));
+				ctx.lineTo((radius+(avg*1.5) + (nrm.actual * data[(i + 1) % CIRCLE_RES / 2])) * Math.cos((i + 1 + offset) % CIRCLE_RES * inc)
+				,(radius+(avg*1.5) + (nrm.actual * data[(i + 1) % CIRCLE_RES / 2])) * Math.sin((i + 1 + offset) % CIRCLE_RES * inc));
+			}
+			ctx.strokeStyle = "rgba(0,0,0,0.125)";
 			ctx.closePath();
 			ctx.stroke();
-			
-			avg /= CIRCLE_RES / 2;
+			ctx.strokeStyle = "black";
+			//avg /= CIRCLE_RES / 2;
 			ctx.beginPath();
 			ctx.arc(0,0,avg,0,2 * Math.PI,false);
 			ctx.closePath();
 			ctx.stroke();
+			
 		}
 		
 		window.addEventListener("load",init);
@@ -191,8 +257,9 @@
 		<label>Track: 
 			<select id="trackSelect" >
 				<option value="media/New Adventure Theme.mp3">New Adventure Theme</option>
-				<option value="media/Peanuts Theme.mp3">Peanuts Theme</option>
-				<option value="media/The Picard Song.mp3">The Picard Song</option>
+				<option value="media/11 DARK THUNDER.mp3">Dark Thunder</option>
+				<option value="media/10 - Helix.mp3">Helix</option>
+				<option value="media/07 Hello to the your first video game.mp3">Hello to the your first video game</option>
 			</select>
 		</label>
 		<button id="fsButton">Go Full Screen</button><br>
