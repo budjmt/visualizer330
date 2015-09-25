@@ -152,7 +152,7 @@
 			ctx.globalAlpha = 1;
 			ctx.translate(canvas.width/2,canvas.height/2);
 			ctx.globalCompositeOperation = "multiply";
-			ctx.drawImage(canvas, -canvas.width/2.2,-canvas.height/2.2,canvas.width/1.1,canvas.height/1.1);
+			ctx.drawImage(canvas, -canvas.width/2.8,-canvas.height/2.8,canvas.width/1.4,canvas.height/1.4);
 			ctx.restore();
 			
 			ctx.save();
@@ -205,7 +205,7 @@
 			}
 			ctx.closePath();
 			ctx.stroke();
-			ctx.moveTo((radius + data[0]) * Math.cos(offset * inc),(radius + data[0]) * Math.sin(offset * inc));
+			ctx.moveTo((radius*0.2 + data[0]) * Math.cos(offset * inc),(radius*0.2 + data[0]) * Math.sin(offset * inc));
 			//strokePass
 			for(var i = 1;i < CIRCLE_RES;i+=2) {
 				
@@ -227,13 +227,17 @@
 				//,radius * Math.cos((i + 1) % CIRCLE_RES * 2 * Math.PI / CIRCLE_RES)
 				//,radius * Math.sin((i + 1) % CIRCLE_RES * 2 * Math.PI / CIRCLE_RES));
 			}
+			ctx.strokeStyle = "rgba(0,0,0,0.4)";
+			ctx.closePath();
+			ctx.stroke();
+			ctx.beginPath();
 			//weird skew elipse thing
 			for(var i = 1;i < CIRCLE_RES;i+=2) {
 				ctx.lineTo((radius+(avg*1.5)) * Math.cos((i + offset) * inc), radius * Math.sin((i + offset) * inc));
 				ctx.lineTo((radius+(avg*1.5) + (nrm.actual * data[(i + 1) % CIRCLE_RES / 2])) * Math.cos((i + 1 + offset) % CIRCLE_RES * inc)
 				,(radius+(avg*1.5) + (nrm.actual * data[(i + 1) % CIRCLE_RES / 2])) * Math.sin((i + 1 + offset) % CIRCLE_RES * inc));
 			}
-			ctx.strokeStyle = "rgba(0,0,0,0.125)";
+			ctx.strokeStyle = "rgba(0,0,0,0.0625)";
 			ctx.closePath();
 			ctx.stroke();
 			ctx.strokeStyle = "black";
