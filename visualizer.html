@@ -2,269 +2,328 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-	<meta charset="utf-8" />
-	<title>Gentle Leather Boyz</title>
-	<style>
-	body{
-		background: #dddddd;
-		font-family:verdana,tahoma,sans-serif;
-		font-size:.8em;
- 	}
+    <meta charset="utf-8" />
+    <title>Gentle Leather Boyz</title>
+    <style>
+    body{
+        background: #dddddd;
+        font-family:verdana,tahoma,sans-serif;
+        font-size:.8em;
+    }
 
-	#canvas,#controls{
-		background: #ffffff;
-		cursor: pointer;
-		margin-left: 10px;
-		margin-top: 10px;
-		box-shadow: 3px 3px 6px rgba(0,0,0,0.5);
-		
-		margin-left: 10px;
-		margin-top: 10px;
-		
- 	}
- 	
- 	#controls{
- 		padding:5px;
- 		width:490px;
- 	}
- 	
- 	#controls div{
- 		margin-bottom:5px;
- 	}
- 	
- 	#assignment{
- 		margin-left: 10px;
-		margin-top: 10px;
- 	}
-	</style>
-	<script>
-		"use strict";
-		
-		const CIRCLE_RES = 1024;
-		
-		var canvas, ctx;
-		var audioElement, analyserNode;
-		var radius = 150;
-		var cx, cy;
-		var rot = 0;
-		var spinsPerSec = 0.003;
-		var offset = 0;
-		var compOffsetsPerSec = 0.0125;
-		var imageData;
-		var avg
-		
-		
-		function init() {
-			canvas = document.querySelector("#canvas");
-			ctx = canvas.getContext('2d');
+    #canvas,#controls{
+        background: #ffffff;
+        cursor: pointer;
+        margin-left: 10px;
+        margin-top: 10px;
+        box-shadow: 3px 3px 6px rgba(0,0,0,0.5);
+        
+        margin-left: 10px;
+        margin-top: 10px;
+        
+    }
+    
+    #controls{
+        padding:5px;
+        width:490px;
+    }
+    
+    #controls div{
+        margin-bottom:5px;
+    }
+    
+    #assignment{
+        margin-left: 10px;
+        margin-top: 10px;
+    }
+    </style>
+    <script>
+        "use strict";
+        
+        const CIRCLE_RES = 1024;
+        
+        var canvas, ctx;
+        var audioElement, analyserNode;
+        //var maxRadius = 150, minRadius = 30;
+        var rad = 125;
+        var cx, cy;
+        var rot = 0;
+        var spinsPerSec = 0.003;
+        var imageData;
+        var avgs = [], runningAvg = 0;
+        var threshold = 1;
+        var color = {r: 0, g: 0, b: 0};
+        var tColor = {r: 0, g: 0, b: 0};
+		var frames;
+		var frameCount = 0;
+		var preCompTrig = new Array(CIRCLE_RES);
+		var beatAvg = 0;
+        
+        function init() {
+            canvas = document.querySelector("#canvas");
+            ctx = canvas.getContext('2d');
+            
+            cx = canvas.width / 2;
+            cy = canvas.height / 2;
+            
+            avgs = new Array(20);
+            avgs.fill(0);
 			
-			cx = canvas.width / 2;
-			cy = canvas.height / 2;
+			frames = new Array(7);
 			
-			audioElement = document.querySelector('audio');
-			analyserNode = createWebAudioContextWithAnalyserNode(audioElement);
-			
-			setupUI();
-			
-			playStream(audioElement,'media/New Adventure Theme.mp3');
-			
-			imageData = ctx.getImageData(0,0,canvas.width,canvas.height);
-			
-			update();
-		}
-		
-		function createWebAudioContextWithAnalyserNode(audioElement) {
-			var audioCtx, analyserNode, sourceNode;
-			// create new AudioContext
-			// The || is because WebAudio has not been standardized across browsers yet
-			// http://webaudio.github.io/web-audio-api/#the-audiocontext-interface
-			audioCtx = new (window.AudioContext || window.webkitAudioContext);
-			
-			// create an analyser node
-			analyserNode = audioCtx.createAnalyser();
-			
-			/*
-			We will request NUM_SAMPLES number of samples or "bins" spaced equally 
-			across the sound spectrum.
-			
-			If NUM_SAMPLES (fftSize) is 256, then the first bin is 0 Hz, the second is 172 Hz, 
-			the third is 344Hz. Each bin contains a number between 0-255 representing 
-			the amplitude of that frequency.
-			*/ 
-			
-			// fft stands for Fast Fourier Transform
-			analyserNode.fftSize = CIRCLE_RES;
-			
-			// this is where we hook up the <audio> element to the analyserNode
-			sourceNode = audioCtx.createMediaElementSource(audioElement); 
-			sourceNode.connect(analyserNode);
-			
-			// here we connect to the destination i.e. speakers
-			analyserNode.connect(audioCtx.destination);
-			return analyserNode;
-		}
-		
-		function setupUI(){
-			document.querySelector("#trackSelect").onchange = function(e){
-				playStream(audioElement,e.target.value);
-			};
-			
-			document.querySelector("#fsButton").onclick = function(){
-				requestFullscreen(canvas);
-			};
-		}
-		
-		function requestFullscreen(element) {
-			if (element.requestFullscreen) {
-			  element.requestFullscreen();
-			} else if (element.mozRequestFullscreen) {
-			  element.mozRequestFullscreen();
-			} else if (element.mozRequestFullScreen) { // camel-cased 'S' was changed to 's' in spec
-			  element.mozRequestFullScreen();
-			} else if (element.webkitRequestFullscreen) {
-			  element.webkitRequestFullscreen();
-			}
-			// .. and do nothing if the method is not supported
-		}
-		
-		function playStream(audioElement,path){
-			audioElement.src = path;
-			audioElement.play();
-			audioElement.volume = 0.2;
-			document.querySelector('#status').innerHTML = "Now playing: " + path;
-		}
-		
-		function update() {
-			requestAnimationFrame(update);
-			
-			var data = new Uint8Array(CIRCLE_RES/2); 
-			analyserNode.getByteFrequencyData(data);
-			
-			//ctx.clearRect(0,0,canvas.width,canvas.height);
-			/*
-			
-			*/
-			
-			
-			
-			
-			//adds the concentric effect
-			ctx.save();
-			ctx.globalAlpha = 1;
-			ctx.translate(canvas.width/2,canvas.height/2);
-			ctx.globalCompositeOperation = "multiply";
-			ctx.drawImage(canvas, -canvas.width/2.2,-canvas.height/2.2,canvas.width/1.1,canvas.height/1.1);
-			ctx.restore();
-			
-			ctx.save();
-			ctx.fillStyle = 'rgba(255,255,255,0.5)';
-			ctx.fillRect(0,0,canvas.width,canvas.height);
-			ctx.restore();
-			
-			ctx.save();
-			ctx.translate(cx,cy);
-			ctx.rotate(rot * Math.PI / 180);
-			drawCircle(data);
-			ctx.restore();
-			//rotate based on average loudness
-			rot += 360 / 60 * spinsPerSec * avg;
-			rot %= 360;
-			//atm offset just accomplishes the same thing as rot, but without rotation
-			offset += CIRCLE_RES / 60 * compOffsetsPerSec;
-			offset %= CIRCLE_RES;
-			
-			ctx.getImageData(0,0,canvas.width,canvas.height);
-		}
-		
-		function drawCircle(data) {
-			avg = 0;
-			var nrm = {max:0,min:0,actual:0};
-			ctx.beginPath();
 			var inc = 2 * Math.PI / CIRCLE_RES;
-			ctx.moveTo((radius + data[0]) * Math.cos(offset * inc),(radius + data[0]) * Math.sin(offset * inc));
+			for(var i = 0;i < CIRCLE_RES;i++) { 
+				preCompTrig[i] = { cos : Math.cos(i * inc), sin : Math.sin(i * inc) };
+			}
+            
+            audioElement = document.querySelector('audio');
+            analyserNode = createWebAudioContextWithAnalyserNode(audioElement);
+            
+            setupUI();
+            
+            var e = document.querySelector('#trackSelect');
+            playStream(audioElement,e.options[e.selectedIndex].value);
+            
+            imageData = ctx.getImageData(0,0,canvas.width,canvas.height);
+            
+            update();
+        }
+        
+        function createWebAudioContextWithAnalyserNode(audioElement) {
+            var audioCtx, analyserNode, sourceNode;
+            // create new AudioContext
+            // The || is because WebAudio has not been standardized across browsers yet
+            // http://webaudio.github.io/web-audio-api/#the-audiocontext-interface
+            audioCtx = new (window.AudioContext || window.webkitAudioContext);
+            
+            // create an analyser node
+            analyserNode = audioCtx.createAnalyser();
+            
+            /*
+            We will request NUM_SAMPLES number of samples or "bins" spaced equally 
+            across the sound spectrum.
+            
+            If NUM_SAMPLES (fftSize) is 256, then the first bin is 0 Hz, the second is 172 Hz, 
+            the third is 344Hz. Each bin contains a number between 0-255 representing 
+            the amplitude of that frequency.
+            */ 
+            
+            // fft stands for Fast Fourier Transform
+            analyserNode.fftSize = CIRCLE_RES;
+            
+            // this is where we hook up the <audio> element to the analyserNode
+            sourceNode = audioCtx.createMediaElementSource(audioElement); 
+            sourceNode.connect(analyserNode);
+            
+            // here we connect to the destination i.e. speakers
+            analyserNode.connect(audioCtx.destination);
+            return analyserNode;
+        }
+        
+        function setupUI(){
+            document.querySelector("#trackSelect").onchange = function(e){
+                playStream(audioElement,e.target.value);
+            };
+            
+            document.querySelector("#fsButton").onclick = function(){
+                requestFullscreen(canvas);
+            };
+        }
+        
+        function requestFullscreen(element) {
+            if (element.requestFullscreen) {
+              element.requestFullscreen();
+            } else if (element.mozRequestFullscreen) {
+              element.mozRequestFullscreen();
+            } else if (element.mozRequestFullScreen) { // camel-cased 'S' was changed to 's' in spec
+              element.mozRequestFullScreen();
+            } else if (element.webkitRequestFullscreen) {
+              element.webkitRequestFullscreen();
+            }
+            // .. and do nothing if the method is not supported
+        }
+        
+        function playStream(audioElement,path){
+            audioElement.src = path;
+            audioElement.play();
+            audioElement.volume = 0.2;
+            document.querySelector('#status').innerHTML = "Now playing: " + path;
+        }
+        
+        function lerp(s,t,u) {
+            return (1 - u) * s + u * t;
+        }
+        
+        function randColor() {
+            return { r: Math.random() * 256, g: Math.random() * 256, b: Math.random() * 256 };
+        }
+        
+        function lerpColor(c,tc,u) {
+            return { r: lerp(c.r,tc.r,u),g: lerp(c.g,tc.g,u),b: lerp(c.b,tc.b,u)};
+        }
+        
+        function update() {
+            requestAnimationFrame(update);
+            
+            var data = new Uint8Array(CIRCLE_RES/2);
+            analyserNode.getByteFrequencyData(data);
+            
+            //ctx.clearRect(0,0,canvas.width,canvas.height);
 			
-			nrm.max = data[(1 + 1) % CIRCLE_RES / 2];
-			nrm.min = data[(1 + 1) % CIRCLE_RES / 2];
+            //adds the concentric effect
+            ctx.save();
+            ctx.globalAlpha = 0.7;
+            ctx.translate(canvas.width/2,canvas.height/2);
+            ctx.globalCompositeOperation = "multiply";
+            ctx.drawImage(canvas, -canvas.width/2.2,-canvas.height/2.2,canvas.width/1.1,canvas.height/1.1);
+            //ctx.drawImage(canvas, -canvas.width * 1.5 / 2, -canvas.height * 1.5 / 2
+			//, canvas.width * 1.5, canvas.height * 1.5);
+            ctx.restore();
+            
+            ctx.save();
+            ctx.fillStyle = 'rgba(255,255,255,0.5)';
+            ctx.fillRect(0,0,canvas.width,canvas.height);
+            ctx.restore();
+            
+            color = lerpColor(color,tColor,0.8);
+            ctx.strokeStyle = "rgb(" + Math.floor(color.r) + "," + Math.floor(color.g) + "," + Math.floor(color.b) + ")";
 			
-			for(var i = 1;i < CIRCLE_RES;i+=2) {
-				if(data[(i + 1) % CIRCLE_RES / 2] > nrm.max)
-					nrm.max = data[(i + 1) % CIRCLE_RES / 2];
-				else if (data[(i + 1) % CIRCLE_RES / 2] < nrm.min) {
-					nrm.min = data[(i + 1) % CIRCLE_RES / 2];
+            ctx.save();
+            ctx.translate(cx,cy);
+			for(var i = 0;i < frames.length;i++) {
+				if(frames[i]) {
+					ctx.save();
+					ctx.strokeStyle = frames[i].stroke;
+					ctx.rotate(frames[i].rot);
+					drawCircle(frames[i].data,rad * (frames.length / i * frameCount));
+					ctx.restore();
 				}
-				avg += data[(i + 1) % CIRCLE_RES / 2];
 			}
-			avg /= CIRCLE_RES / 2;
-			nrm.actual = (nrm.max-nrm.min)/(CIRCLE_RES / 2);
+            ctx.rotate(rot * Math.PI / 180);
+            drawCircle(data,rad);
+            ctx.restore();
+            //rotate based on average loudness
+            rot += 360 / 60 * spinsPerSec * avgs[avgs.length - 1];
+            rot %= 360;
+            
+			frames.push({data: data, rot: rot, stroke: color});
+			frames.shift();
 			
-			//bar pass
-			for(var i = 1;i < CIRCLE_RES;i+=2) {
-				ctx.lineTo((radius+(avg*1.5)) * Math.cos((i + offset) * inc), ((avg*1.5)+radius) * Math.sin((i + offset) * inc));
-				ctx.lineTo((radius+(avg*1.5) + (nrm.actual * data[(i + 1) % CIRCLE_RES / 2])) * Math.cos((i + 1 + offset) % CIRCLE_RES * inc)
-				,(radius+(avg*1.5) + (nrm.actual * data[(i + 1) % CIRCLE_RES / 2])) * Math.sin((i + 1 + offset) % CIRCLE_RES * inc));
-
-			}
-			ctx.closePath();
-			ctx.stroke();
-			ctx.moveTo((radius + data[0]) * Math.cos(offset * inc),(radius + data[0]) * Math.sin(offset * inc));
-			//strokePass
-			for(var i = 1;i < CIRCLE_RES;i+=2) {
-				
-				
-				//ctx.lineTo(radius * Math.cos((i + offset) * inc), radius * Math.sin((i + offset) * inc));
-				ctx.lineTo((radius+(avg*1.5) + data[(i + 1) % CIRCLE_RES / 2]) * Math.cos((i + 1 + offset) % CIRCLE_RES * inc)
-				,(radius+(avg*1.5) + data[(i + 1) % CIRCLE_RES / 2]) * Math.sin((i + 1 + offset) % CIRCLE_RES * inc));
-				
-				/*
-				ctx.quadraticCurveTo(radius * Math.cos((i + offset) * inc), radius * Math.sin((i + offset) * inc),
-									 (radius + data[(i + 1) % CIRCLE_RES / 2]) * Math.cos((i + 1 + offset) % CIRCLE_RES * inc),
-									 (radius + data[(i + 1) % CIRCLE_RES / 2]) * Math.sin((i + 1 + offset) % CIRCLE_RES * inc));
-				
-				avg += data[(i + 1) % CIRCLE_RES / 2];
-				*/
-				//ctx.textAlign = 'center';
-				//ctx.verticalAlign = 'middle';
-				//ctx.strokeText((i + 1) % CIRCLE_RES / 2 + ""
-				//,radius * Math.cos((i + 1) % CIRCLE_RES * 2 * Math.PI / CIRCLE_RES)
-				//,radius * Math.sin((i + 1) % CIRCLE_RES * 2 * Math.PI / CIRCLE_RES));
-			}
-			//weird skew elipse thing
-			for(var i = 1;i < CIRCLE_RES;i+=2) {
-				ctx.lineTo((radius+(avg*1.5)) * Math.cos((i + offset) * inc), radius * Math.sin((i + offset) * inc));
-				ctx.lineTo((radius+(avg*1.5) + (nrm.actual * data[(i + 1) % CIRCLE_RES / 2])) * Math.cos((i + 1 + offset) % CIRCLE_RES * inc)
-				,(radius+(avg*1.5) + (nrm.actual * data[(i + 1) % CIRCLE_RES / 2])) * Math.sin((i + 1 + offset) % CIRCLE_RES * inc));
-			}
-			ctx.strokeStyle = "rgba(0,0,0,0.125)";
-			ctx.closePath();
-			ctx.stroke();
-			ctx.strokeStyle = "black";
-			//avg /= CIRCLE_RES / 2;
-			ctx.beginPath();
-			ctx.arc(0,0,avg,0,2 * Math.PI,false);
-			ctx.closePath();
-			ctx.stroke();
+            //imageData = ctx.getImageData(0,0,canvas.width,canvas.height);
 			
-		}
-		
-		window.addEventListener("load",init);
-	</script>
+			frameCount++;
+			frameCount %= 10;
+        }
+        
+        function drawCircle(data, radius) {
+            var avg = 0;
+            var nrm = {max:0,min:0,actual:0};
+            
+            nrm.max = data[(1 + 1) % CIRCLE_RES / 2];
+            nrm.min = data[(1 + 1) % CIRCLE_RES / 2];
+            
+            for(var i = 1;i < CIRCLE_RES;i+=2) {
+				var index = (i + 1) % CIRCLE_RES / 2;
+                if(data[index] > nrm.max)
+                    nrm.max = data[index];
+                else if (data[index] < nrm.min) {
+                    nrm.min = data[index];
+                }
+                avg += data[index];
+            }
+            avg /= CIRCLE_RES / 2;
+            nrm.actual = (nrm.max-nrm.min)/(CIRCLE_RES / 2);
+            avgs.push(avg);
+            avgs = avgs.slice(1);
+            runningAvg = avgs.reduce(function(prev,next) { return prev + next; });
+            runningAvg /= avgs.length;
+            if((avg - runningAvg) > threshold) {
+                if(color.r < 1 && color.g < 1 && color.b < 1) {
+                    tColor = randColor();
+				}
+            }
+            else {
+                tColor = {r:0,g:0,b:0};
+			}
+            
+			var prevBar = {x: radius + data[0], y: 0};
+			var prevStroke = {x: radius + data[0], y: 0};
+			var prevEllipse = { x : radius + (avg * 1.5) + data[0], y : 0 };
+          
+            for(var i = 1;i < CIRCLE_RES;i+=2) {
+				var index = (i + 1) % CIRCLE_RES;
+				//var prevIndex = (i + CIRCLE_RES - 1) % CIRCLE_RES;
+				
+				//bar pass
+				ctx.beginPath();
+				ctx.moveTo(prevBar.x,prevBar.y);
+                ctx.lineTo((radius+(avg*1.5)) * preCompTrig[i].cos, ((avg*1.5)+radius) * preCompTrig[i].sin);
+				prevBar.x = (radius+(avg*1.5) + (nrm.actual * data[index / 2])) * preCompTrig[index].cos;
+				prevBar.y = (radius+(avg*1.5) + (nrm.actual * data[index / 2])) * preCompTrig[index].sin;
+                ctx.lineTo(prevBar.x,prevBar.y);
+				ctx.stroke();
+				
+				//strokePass
+				ctx.beginPath();
+				ctx.moveTo(prevStroke.x,prevStroke.y);
+                //ctx.lineTo(radius * Math.cos((i) * inc), radius * Math.sin((i) * inc));
+				prevStroke.x = (radius+(avg*1.5) + data[index / 2]) * preCompTrig[index].cos;
+				prevStroke.y = (radius+(avg*1.5) + data[index / 2]) * preCompTrig[index].sin;
+                ctx.lineTo(prevStroke.x, prevStroke.y);
+                /*
+                ctx.quadraticCurveTo(radius * Math.cos((i) * inc), radius * Math.sin((i) * inc),
+                                     (radius + data[(i + 1) % CIRCLE_RES / 2]) * Math.cos((i + 1) % CIRCLE_RES * inc),
+                                     (radius + data[(i + 1) % CIRCLE_RES / 2]) * Math.sin((i + 1) % CIRCLE_RES * inc));
+                
+                avg += data[(i + 1) % CIRCLE_RES / 2];
+                */
+                //ctx.textAlign = 'center';
+                //ctx.verticalAlign = 'middle';
+                //ctx.strokeText((i + 1) % CIRCLE_RES / 2 + ""
+                //,radius * Math.cos((i + 1) % CIRCLE_RES * 2 * Math.PI / CIRCLE_RES)
+                //,radius * Math.sin((i + 1) % CIRCLE_RES * 2 * Math.PI / CIRCLE_RES));
+				
+				//weird skew elipse thing
+				ctx.save();
+				ctx.globalAlpha = 0.125;
+				ctx.moveTo(prevEllipse.x,prevEllipse.y);
+                ctx.lineTo((radius+(avg*1.5)) * preCompTrig[i].cos, radius * preCompTrig[i].sin);
+				prevEllipse.x = (radius+(avg*1.5) + (nrm.actual * data[index / 2])) * preCompTrig[index].cos;
+				prevEllipse.y = (radius+(avg*1.5) + (nrm.actual * data[index / 2])) * preCompTrig[index].sin;
+                ctx.lineTo(prevEllipse.x, prevEllipse.y);
+				ctx.stroke();
+				ctx.restore();
+            }
+            
+            //ctx.strokeStyle = "black";
+            //avg /= CIRCLE_RES / 2;
+            ctx.beginPath();
+            ctx.arc(0,0,avg,0,2 * Math.PI,false);
+            ctx.closePath();
+            ctx.stroke();
+            
+        }
+        
+        window.addEventListener("load",init);
+    </script>
 </head>
 <body>
-	<canvas id="canvas" width="800" height="600">
-	Loser. Download a real browser, like Netscape Navigator. Though you still won't have canvas support.
-	</canvas>
-	<div id="controls">
-		<audio controls loop></audio>
-		<label>Track: 
-			<select id="trackSelect" >
-				<option value="media/New Adventure Theme.mp3">New Adventure Theme</option>
-				<option value="media/11 DARK THUNDER.mp3">Dark Thunder</option>
-				<option value="media/10 - Helix.mp3">Helix</option>
-				<option value="media/07 Hello to the your first video game.mp3">Hello to the your first video game</option>
-			</select>
-		</label>
-		<button id="fsButton">Go Full Screen</button><br>
-		<p id="status">???</p>
-	</div>
+    <canvas id="canvas" width="800" height="600">
+    Loser. Download a real browser, like Netscape Navigator. Though you still won't have canvas support.
+    </canvas>
+    <div id="controls">
+        <audio controls loop></audio>
+        <label>Track: 
+            <select id="trackSelect" >
+                <option value="media/New Adventure Theme.mp3">New Adventure Theme</option>
+                <option value="media/11 DARK THUNDER.mp3">Dark Thunder</option>
+                <option value="media/Metal Squad.mp3" selected>Metal Squad</option>
+                <option value="media/10 - Helix.mp3">Helix</option>
+                <option value="media/07 Hello to the your first video game.mp3">Hello to the your first video game</option>
+            </select>
+        </label>
+        <button id="fsButton">Go Full Screen</button><br>
+        <p id="status">???</p>
+    </div>
 </body>
 </html>
